@@ -58,6 +58,8 @@ pytest -q
 | POST | `/enterprise/inventory/reserve` | Reserve stock |
 | GET | `/enterprise/pricing/quote` | Deterministic price quote |
 | POST | `/enterprise/orders` | Create draft/reserved order |
+| GET | `/mcp/tools` | List MCP tools |
+| POST | `/mcp/call` | Invoke MCP tool (X-Role header) |
 
 ## Phase 4 — Database
 

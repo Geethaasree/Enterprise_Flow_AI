@@ -200,6 +200,10 @@ class OrderService:
         workflow_id: str | None = None,
         request_id: str | None = None,
     ) -> m.Order:
+        existing = self.orders.get_by_number(order_number)
+        if existing:
+            return existing  # idempotent on order_number
+
         customer = self.customers.get_by_code(customer_code)
         quote = self.pricing.quote(sku, quantity, customer_code)
         product = ProductService(self.session).get_by_sku(sku)
@@ -237,5 +241,41 @@ class OrderService:
             request_id=request_id,
             workflow_id=workflow_id,
             detail=f"{order_number} {sku} x{quantity}",
+        )
+        return order
+
+    def get_order(self, *, order_number: str | None = None, order_id: str | None = None) -> m.Order:
+        row = None
+        if order_number:
+            row = self.orders.get_by_number(order_number)
+        elif order_id:
+            row = self.orders.get(order_id)
+        if not row:
+            raise ServiceError("ORDER_NOT_FOUND", "Order not found")
+        return row
+
+    def cancel_order(
+        self,
+        *,
+        order_number: str,
+        actor: str | None = None,
+        request_id: str | None = None,
+    ) -> m.Order:
+        order = self.get_order(order_number=order_number)
+        if order.status == "cancelled":
+            return order  # idempotent
+        if order.status not in ("draft", "reserved", "pending_approval"):
+            raise ServiceError("ORDER_NOT_CANCELLABLE", f"Cannot cancel status={order.status}")
+        if order.status == "reserved":
+            for item in order.items:
+                self.inventory.release(item.sku, item.quantity, actor=actor, request_id=request_id)
+        order.status = "cancelled"
+        self.audit.write(
+            "order.cancel",
+            actor=actor,
+            entity_type="order",
+            entity_id=order.id,
+            request_id=request_id,
+            detail=order_number,
         )
         return order

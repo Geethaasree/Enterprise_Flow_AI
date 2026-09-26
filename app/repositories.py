@@ -78,6 +78,11 @@ class OrderRepo:
             .where(m.Order.order_number == order_number)
         )
 
+    def get(self, order_id: str) -> m.Order | None:
+        return self.s.scalar(
+            select(m.Order).options(joinedload(m.Order.items)).where(m.Order.id == order_id)
+        )
+
     def add(self, order: m.Order) -> m.Order:
         self.s.add(order)
         self.s.flush()

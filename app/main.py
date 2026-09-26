@@ -12,6 +12,7 @@ from app.logging_setup import setup_logging
 from app.routes.enterprise import router as enterprise_router
 from app.routes.health import router as health_router
 from app.routes.llm import router as llm_router
+from app.routes.mcp import router as mcp_router
 from app.routes.workflows import router as workflows_router
 
 settings = get_settings()
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(llm_router)
     app.include_router(workflows_router)
     app.include_router(enterprise_router)
+    app.include_router(mcp_router)
     return app
 
 
