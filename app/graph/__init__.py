@@ -99,11 +99,21 @@ def run_workflow(
     *,
     request_id: str | None = None,
     workflow_id: str | None = None,
+    session_id: str | None = None,
     graph=None,
 ) -> dict[str, Any]:
     rid = request_id or new_request_id()
     wid = workflow_id or new_workflow_id()
     compiled = graph or get_compiled_graph()
+
+    memory_bundle: dict[str, Any] = {}
+    if session_id:
+        try:
+            from app.memory import build_context_bundle
+
+            memory_bundle = build_context_bundle(session_id)
+        except Exception:  # noqa: BLE001
+            memory_bundle = {"session_id": session_id}
 
     initial: GraphState = {
         "request_id": rid,
@@ -117,7 +127,10 @@ def run_workflow(
         "steps": [],
         "final_response": None,
         "error": None,
-        "context": {},
+        "context": {
+            "session_id": session_id,
+            "memory_bundle": memory_bundle,
+        },
     }
     config = {"configurable": {"thread_id": wid}}
     result = compiled.invoke(initial, config=config)  # type: ignore[arg-type]

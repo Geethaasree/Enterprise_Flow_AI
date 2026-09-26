@@ -24,7 +24,7 @@ from app.services import (
 
 logger = logging.getLogger(__name__)
 
-# ponytail: process-local idempotency; move to Redis/DB if multi-replica
+# ponytail: Redis-backed idempotency with in-process fallback
 _IDEMPOTENCY: dict[str, dict[str, Any]] = {}
 _IDEM_LOCK = threading.Lock()
 
@@ -207,6 +207,14 @@ def _require(role: str, perm: str) -> None:
 def _idem_get(key: str | None) -> dict[str, Any] | None:
     if not key:
         return None
+    try:
+        from app.memory import cache_get
+
+        hit = cache_get("idem", key)
+        if isinstance(hit, dict):
+            return hit
+    except Exception:  # noqa: BLE001
+        pass
     with _IDEM_LOCK:
         return _IDEMPOTENCY.get(key)
 
@@ -214,6 +222,12 @@ def _idem_get(key: str | None) -> dict[str, Any] | None:
 def _idem_put(key: str | None, value: dict[str, Any]) -> None:
     if not key:
         return
+    try:
+        from app.memory import cache_set
+
+        cache_set("idem", key, value, ttl=60 * 60 * 24)
+    except Exception:  # noqa: BLE001
+        pass
     with _IDEM_LOCK:
         _IDEMPOTENCY[key] = value
 
@@ -299,15 +313,30 @@ def h_get_product(inp: SkuIn, role: str, request_id: str | None) -> dict:
 
 def h_check_inventory(inp: SkuIn, role: str, request_id: str | None) -> dict:
     _require(role, "inventory:read")
+    try:
+        from app.memory import cache_get, cache_set
+
+        hit = cache_get("inv", inp.sku.upper())
+        if isinstance(hit, dict):
+            return {**hit, "cached": True}
+    except Exception:  # noqa: BLE001
+        hit = None
     with session_scope() as s:
         v = InventoryService(s).view(inp.sku)
-        return {
+        out = {
             "sku": v.sku,
             "on_hand": v.on_hand,
             "reserved": v.reserved,
             "available": v.available,
             "warehouse": v.warehouse,
         }
+    try:
+        from app.memory import cache_set
+
+        cache_set("inv", inp.sku.upper(), out, ttl=15)
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 def h_reserve_inventory(inp: QtySkuIn, role: str, request_id: str | None) -> dict:
@@ -315,17 +344,26 @@ def h_reserve_inventory(inp: QtySkuIn, role: str, request_id: str | None) -> dic
     cached = _idem_get(inp.idempotency_key)
     if cached:
         return {**cached, "idempotent_replay": True}
-    with session_scope() as s:
-        v = InventoryService(s).reserve(inp.sku, inp.quantity, actor=role, request_id=request_id)
-        out = {
-            "sku": v.sku,
-            "quantity": inp.quantity,
-            "on_hand": v.on_hand,
-            "reserved": v.reserved,
-            "available": v.available,
-        }
-        _idem_put(inp.idempotency_key, out)
-        return out
+    from app.memory import cache_delete, distributed_lock
+
+    with distributed_lock(f"inv:{inp.sku.upper()}", ttl_seconds=15, wait_seconds=8) as ok:
+        if not ok:
+            raise ToolError("LOCK_TIMEOUT", f"Could not lock inventory for {inp.sku}", http_status=409)
+        with session_scope() as s:
+            v = InventoryService(s).reserve(inp.sku, inp.quantity, actor=role, request_id=request_id)
+            out = {
+                "sku": v.sku,
+                "quantity": inp.quantity,
+                "on_hand": v.on_hand,
+                "reserved": v.reserved,
+                "available": v.available,
+            }
+            _idem_put(inp.idempotency_key, out)
+    try:
+        cache_delete("inv", inp.sku.upper())
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 def h_release_inventory(inp: QtySkuIn, role: str, request_id: str | None) -> dict:
@@ -333,30 +371,55 @@ def h_release_inventory(inp: QtySkuIn, role: str, request_id: str | None) -> dic
     cached = _idem_get(inp.idempotency_key)
     if cached:
         return {**cached, "idempotent_replay": True}
-    with session_scope() as s:
-        v = InventoryService(s).release(inp.sku, inp.quantity, actor=role, request_id=request_id)
-        out = {
-            "sku": v.sku,
-            "quantity": inp.quantity,
-            "on_hand": v.on_hand,
-            "reserved": v.reserved,
-            "available": v.available,
-        }
-        _idem_put(inp.idempotency_key, out)
-        return out
+    from app.memory import cache_delete, distributed_lock
+
+    with distributed_lock(f"inv:{inp.sku.upper()}", ttl_seconds=15, wait_seconds=8) as ok:
+        if not ok:
+            raise ToolError("LOCK_TIMEOUT", f"Could not lock inventory for {inp.sku}", http_status=409)
+        with session_scope() as s:
+            v = InventoryService(s).release(inp.sku, inp.quantity, actor=role, request_id=request_id)
+            out = {
+                "sku": v.sku,
+                "quantity": inp.quantity,
+                "on_hand": v.on_hand,
+                "reserved": v.reserved,
+                "available": v.available,
+            }
+            _idem_put(inp.idempotency_key, out)
+    try:
+        cache_delete("inv", inp.sku.upper())
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 def h_get_price(inp: PriceIn, role: str, request_id: str | None) -> dict:
     _require(role, "pricing:read")
+    ck = f"{inp.sku.upper()}:{inp.quantity}:{inp.customer_code.upper()}"
+    try:
+        from app.memory import cache_get, cache_set
+
+        hit = cache_get("price", ck)
+        if isinstance(hit, dict):
+            return {**hit, "cached": True}
+    except Exception:  # noqa: BLE001
+        pass
     with session_scope() as s:
         q = PricingService(s).quote(inp.sku, inp.quantity, inp.customer_code)
-        return {
+        out = {
             "sku": q.sku,
             "quantity": q.quantity,
             "unit_price": _dec(q.unit_price),
             "discount_pct": _dec(q.discount_pct),
             "line_total": _dec(q.line_total),
         }
+    try:
+        from app.memory import cache_set
+
+        cache_set("price", ck, out, ttl=60)
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 def h_calculate_discount(inp: PriceIn, role: str, request_id: str | None) -> dict:

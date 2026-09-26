@@ -62,6 +62,8 @@ pytest -q
 | POST | `/mcp/call` | Invoke MCP tool (X-Role header) |
 | POST | `/rag/ingest` | Ingest policy documents |
 | POST | `/rag/search` | Policy similarity search + citations |
+| GET | `/workflows/session/{id}` | Session turns + summary |
+| GET | `/workflows/memory/business/{code}` | Long-term customer memory |
 
 ## Phase 4 — Database
 

@@ -37,12 +37,25 @@ def customer_agent(state: GraphState) -> dict:
     """Identify customer + contract + light credit check."""
     ctx = _ctx(state)
     text = state.get("user_request") or ""
-    code = parse_customer(text, state.get("customer_hint"))
+    # multi-turn: prefer last customer from business/session memory if not in text
+    bundle = ctx.get("memory_bundle") or {}
+    biz = bundle.get("business_memory") or {}
+    mem_customer = biz.get("last_customer_code")
+    code = parse_customer(text, state.get("customer_hint"), default=mem_customer or "ACME")
+    # if user says "same customer" / omits name, use memory
+    lower = text.lower()
+    if mem_customer and ("same customer" in lower or "for them" in lower or "again" in lower):
+        code = str(mem_customer).upper()
     qty = parse_quantity(text)
-    sku = parse_sku(text)
+    sku = parse_sku(text, default=str(biz.get("last_sku") or "LAPTOP-PRO-14"))
     ctx["customer_code"] = code
     ctx["sku"] = sku
     ctx["quantity"] = qty
+
+    if bundle.get("summary") or bundle.get("recent_turns"):
+        from app.memory import context_prompt_block
+
+        ctx["memory_note"] = context_prompt_block(bundle)
 
     cust = _tool("get_customer", {"customer_code": code}, state)
     contract = _tool("get_customer_contract", {"customer_code": code}, state)
@@ -243,6 +256,22 @@ def order_agent(state: GraphState) -> dict:
             "route": "done",
         }
     notes.append(f"order={created['result'].get('order_number')}")
+    # long-term business memory
+    try:
+        from app.memory import merge_business_memory
+
+        merge_business_memory(
+            code,
+            {
+                "last_customer_code": code,
+                "last_sku": sku,
+                "last_qty": qty,
+                "last_order_number": created["result"].get("order_number"),
+                "last_workflow_id": state.get("workflow_id"),
+            },
+        )
+    except Exception:
+        logger.warning("biz_memory_write_failed", exc_info=True)
     return {"steps": _steps(state, "order_agent"), "notes": notes, "context": ctx}
 
 
