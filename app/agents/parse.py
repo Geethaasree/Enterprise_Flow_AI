@@ -12,6 +12,8 @@ _SKU_MAP = {
     "mouse": "MOUSE-ERGO-01",
     "ergo mouse": "MOUSE-ERGO-01",
 }
+_DISC = re.compile(r"(?:with|at|@)?\s*(\d{1,2}(?:\.\d+)?)\s*%\s*(?:discount|off)?", re.IGNORECASE)
+_DISC2 = re.compile(r"(?:discount|exception)\s*(?:of\s*)?(\d{1,2}(?:\.\d+)?)\s*%", re.IGNORECASE)
 
 
 def parse_quantity(text: str, default: int = 1) -> int:
@@ -21,7 +23,6 @@ def parse_quantity(text: str, default: int = 1) -> int:
 
 def parse_sku(text: str, default: str = "LAPTOP-PRO-14") -> str:
     lower = (text or "").lower()
-    # explicit sku
     m = re.search(r"\b([A-Z0-9]+-[A-Z0-9-]+)\b", text or "", re.IGNORECASE)
     if m:
         return m.group(1).upper()
@@ -31,9 +32,17 @@ def parse_sku(text: str, default: str = "LAPTOP-PRO-14") -> str:
     return default
 
 
+def parse_discount_pct(text: str) -> float | None:
+    """Optional requested discount exception from free text."""
+    for rx in (_DISC2, _DISC):
+        m = rx.search(text or "")
+        if m:
+            return float(m.group(1))
+    return None
+
+
 def parse_customer(text: str, hint: str | None = None, default: str = "ACME") -> str:
     if hint:
-        # take first token-ish code
         code = hint.strip().split()[0].upper().rstrip(".,")
         if code:
             return code

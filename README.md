@@ -64,6 +64,8 @@ pytest -q
 | POST | `/rag/search` | Policy similarity search + citations |
 | GET | `/workflows/session/{id}` | Session turns + summary |
 | GET | `/workflows/memory/business/{code}` | Long-term customer memory |
+| GET | `/approvals` | List pending approvals |
+| POST | `/approvals/{id}/decide` | Approve/reject + resume graph |
 
 ## Phase 4 — Database
 

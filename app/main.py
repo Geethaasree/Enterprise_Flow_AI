@@ -9,6 +9,7 @@ from fastapi import FastAPI
 
 from app.config import get_settings
 from app.logging_setup import setup_logging
+from app.routes.approvals import router as approvals_router
 from app.routes.enterprise import router as enterprise_router
 from app.routes.health import router as health_router
 from app.routes.llm import router as llm_router
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(enterprise_router)
     app.include_router(mcp_router)
     app.include_router(rag_router)
+    app.include_router(approvals_router)
     return app
 
 

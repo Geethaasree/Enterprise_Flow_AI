@@ -73,7 +73,7 @@ def workflows_run(
 
         return JSONResponse(
             {
-                "status": "ok",
+                "status": state.get("status") or "ok",
                 "request_id": state.get("request_id"),
                 "workflow_id": state.get("workflow_id"),
                 "session_id": session_id,
@@ -83,6 +83,7 @@ def workflows_run(
                 "customer_hint": state.get("customer_hint"),
                 "steps": state.get("steps"),
                 "final_response": final,
+                "approval": state.get("approval"),
                 "context_used": bool((state.get("context") or {}).get("memory_bundle")),
                 "rate": rate_meta,
             }

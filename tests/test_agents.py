@@ -59,7 +59,15 @@ def test_full_order_workflow():
     assert state.get("error") is None
     steps = state["steps"]
     assert steps[0] == "supervisor"
-    for name in ("customer_agent", "inventory_agent", "pricing_agent", "order_agent", "policy_agent", "finalize"):
+    for name in (
+        "customer_agent",
+        "inventory_agent",
+        "pricing_agent",
+        "approval_agent",
+        "order_agent",
+        "policy_agent",
+        "finalize",
+    ):
         assert name in steps
     assert state["context"].get("order", {}).get("ok") is True
     assert "ORD-" in (state["final_response"] or "")

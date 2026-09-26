@@ -6,7 +6,8 @@ import logging
 import uuid
 from typing import Any
 
-from app.agents.parse import parse_customer, parse_quantity, parse_sku
+from app.agents.parse import parse_customer, parse_discount_pct, parse_quantity, parse_sku
+from app.approvals import evaluate_approval_need
 from app.graph.state import GraphState
 from app.mcp_tools import ToolError, call_tool
 
@@ -168,8 +169,11 @@ def inventory_agent(state: GraphState) -> dict:
 
 
 def pricing_agent(state: GraphState) -> dict:
-    """Deterministic quote via MCP pricing tools."""
+    """Deterministic quote via MCP pricing tools + approval thresholds."""
+    from decimal import Decimal
+
     ctx = _ctx(state)
+    text = state.get("user_request") or ""
     sku = ctx.get("sku") or "LAPTOP-PRO-14"
     qty = int(ctx.get("quantity") or 1)
     code = ctx.get("customer_code") or "ACME"
@@ -198,17 +202,135 @@ def pricing_agent(state: GraphState) -> dict:
             "route": "done",
         }
 
-    # credit check with real line total
+    # optional discount exception from free text
+    override = parse_discount_pct(text)
+    if override is not None and price["ok"]:
+        unit = Decimal(str(price["result"]["unit_price"]))
+        line = (unit * qty * (Decimal(100) - Decimal(str(override))) / Decimal(100)).quantize(
+            Decimal("0.01")
+        )
+        price["result"]["discount_pct"] = f"{override:.2f}"
+        price["result"]["line_total"] = f"{line:.2f}"
+        price["result"]["discount_override"] = True
+        notes.append(f"discount_override={override}")
+
     total = price["result"].get("line_total")
+    discount_pct = price["result"].get("discount_pct") or 0
     credit = _tool("check_credit", {"customer_code": code, "amount": total}, state)
     ctx["credit"] = credit
-    notes.append(f"price total={total} discount={price['result'].get('discount_pct')}%")
+    notes.append(f"price total={total} discount={discount_pct}%")
 
-    if credit["ok"] and not credit["result"].get("approved"):
-        notes.append("credit_exceeded")
-        ctx["needs_approval"] = True
+    credit_ok = bool(credit.get("ok") and credit.get("result", {}).get("approved"))
+    needs, atype, reason = evaluate_approval_need(
+        discount_pct=discount_pct,
+        line_total=total,
+        credit_approved=credit_ok,
+    )
+    ctx["needs_approval"] = needs
+    if needs:
+        ctx["approval_type"] = atype
+        ctx["approval_reason"] = reason
+        notes.append(f"approval_required type={atype}")
+    else:
+        notes.append("approval_not_required")
 
     return {"steps": _steps(state, "pricing_agent"), "notes": notes, "context": ctx}
+
+
+def approval_agent(state: GraphState) -> dict:
+    """HITL gate — interrupt when approval required; resume with decision."""
+    from langgraph.types import interrupt
+
+    from app.approvals import ApprovalService
+    from app.db import session_scope
+
+    ctx = _ctx(state)
+    notes = list(state.get("notes") or [])
+    steps = _steps(state, "approval_agent")
+
+    if not ctx.get("needs_approval"):
+        notes.append("approval_skipped")
+        return {"steps": steps, "notes": notes, "context": ctx}
+
+    payload = {
+        "sku": ctx.get("sku"),
+        "quantity": ctx.get("quantity"),
+        "customer_code": ctx.get("customer_code"),
+        "price": (ctx.get("price") or {}).get("result"),
+        "credit": (ctx.get("credit") or {}).get("result"),
+    }
+    with session_scope() as s:
+        view = ApprovalService(s).ensure_pending(
+            workflow_id=state.get("workflow_id") or "",
+            approval_type=str(ctx.get("approval_type") or "general"),
+            reason=str(ctx.get("approval_reason") or "manual review"),
+            payload=payload,
+            requested_by="sales",
+            request_id=state.get("request_id"),
+        )
+        ctx["approval_id"] = view.id
+
+    decision = interrupt(
+        {
+            "type": "approval_required",
+            "approval_id": ctx["approval_id"],
+            "workflow_id": state.get("workflow_id"),
+            "approval_type": ctx.get("approval_type"),
+            "reason": ctx.get("approval_reason"),
+            "payload": payload,
+        }
+    )
+
+    # resume payload
+    if not isinstance(decision, dict):
+        decision = {"action": "reject", "note": str(decision)}
+    action = str(decision.get("action") or "reject").lower()
+    decided_by = str(decision.get("decided_by") or "manager")
+    role = str(decision.get("role") or "admin")
+    note = decision.get("note")
+
+    try:
+        with session_scope() as s:
+            ApprovalService(s).decide(
+                ctx["approval_id"],
+                action=action,
+                decided_by=decided_by,
+                role=role,
+                note=note,
+                request_id=state.get("request_id"),
+            )
+    except Exception as e:
+        logger.warning("approval_decide_failed: %s", e)
+        # if already decided via API, continue based on action in decision
+
+    if action != "approve":
+        # release reserved stock
+        sku = ctx.get("sku")
+        qty = int(ctx.get("quantity") or 0)
+        if sku and qty:
+            _tool(
+                "release_inventory",
+                {
+                    "sku": sku,
+                    "quantity": qty,
+                    "idempotency_key": f"rel-rej-{state.get('workflow_id')}",
+                },
+                state,
+            )
+        msg = f"Order rejected by {decided_by}" + (f": {note}" if note else "")
+        notes.append("approval_rejected")
+        return {
+            "steps": steps,
+            "notes": notes,
+            "context": ctx,
+            "error": msg,
+            "final_response": msg,
+            "route": "done",
+        }
+
+    notes.append(f"approval_granted by={decided_by}")
+    ctx["approval_status"] = "approved"
+    return {"steps": steps, "notes": notes, "context": ctx}
 
 
 def order_agent(state: GraphState) -> dict:

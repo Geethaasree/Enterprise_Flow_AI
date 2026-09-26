@@ -152,7 +152,9 @@ class Approval(Base, TimestampMixin):
     order_id: Mapped[str | None] = mapped_column(ForeignKey("orders.id"), nullable=True, index=True)
     workflow_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), default="pending")  # pending|approved|rejected
+    approval_type: Mapped[str] = mapped_column(String(64), default="general")
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payload_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     requested_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
