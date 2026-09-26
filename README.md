@@ -78,6 +78,18 @@ pytest -q
 
 JWT (HS256) + RBAC. Elevated roles require `Authorization: Bearer` or `X-Role` header — never body alone. Prompt injection blocked on `/workflows/run`. PII redacted in session/response text.
 
+## Phase 13 — Frontend
+
+Next.js App Router under `frontend/` (Stitch project `12653450058558633131`, Dark Ops DS). Pages: `/dashboard` `/chat` `/orders` `/approvals` `/traces` `/evaluations` `/knowledge` `/health` + `/login`.
+
+```bash
+# UI http://localhost:3010  (API still :8010)
+docker compose up -d --build frontend
+# or local: cd frontend && npm i && NEXT_PUBLIC_API_URL=http://127.0.0.1:8010 npm run dev
+```
+
+Demo login: `admin` / `admin`. Browser calls go through Next rewrite `/backend/*` → API.
+
 ## Phase 11 — MLflow
 
 File tracking URI (`MLFLOW_TRACKING_URI`, default `./mlruns`). Workflow/agent/tool/RAG/LLM spans are nested runs. Evaluation datasets live under `evaluations/datasets/`.

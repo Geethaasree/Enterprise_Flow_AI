@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.logging_setup import setup_logging
@@ -37,6 +39,15 @@ def create_app() -> FastAPI:
         yield
 
     app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+    # # ponytail: open CORS for interview UI; tighten origins in prod
+    origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins if origins != ["*"] else ["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(llm_router)

@@ -42,6 +42,7 @@ services:
       MLFLOW_EXPERIMENT: enterpriseflow
       EF_JWT_SECRET: enterpriseflow-dev-secret-change-me
       EF_AUTH_REQUIRED: "0"
+      CORS_ORIGINS: "*"
       # XAI_API_KEY optional; falls back to mounted Hermes xai-oauth
     volumes:
       - /home/ubuntu/.hermes/auth.json:/home/ubuntu/.hermes/auth.json:ro
@@ -51,6 +52,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        API_INTERNAL_URL: http://api:8000
+    ports:
+      - "3010:3000"
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: /backend
+    depends_on:
+      - api
 
 volumes:
   ef_pgdata:

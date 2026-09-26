@@ -177,3 +177,30 @@ def create_order(body: OrderBody):
     except ServiceError as e:
         code = 409 if e.code == "INSUFFICIENT_STOCK" else 400
         return JSONResponse({"status": "error", "code": e.code, "message": e.message}, status_code=code)
+
+
+@router.get("/orders")
+def list_orders(limit: int = 50):
+    from sqlalchemy import select
+
+    from app.models import Order
+
+    limit = max(1, min(limit, 200))
+    with session_scope() as s:
+        rows = s.scalars(select(Order).order_by(Order.created_at.desc()).limit(limit)).all()
+        return {
+            "status": "ok",
+            "count": len(rows),
+            "orders": [
+                {
+                    "order_number": o.order_number,
+                    "status": o.status,
+                    "customer_id": o.customer_id,
+                    "total": str(o.total),
+                    "discount_total": str(o.discount_total),
+                    "currency": o.currency,
+                    "created_at": o.created_at.isoformat() if o.created_at else None,
+                }
+                for o in rows
+            ],
+        }
