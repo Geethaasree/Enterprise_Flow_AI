@@ -471,13 +471,36 @@ def h_track_shipment(inp: TrackShipmentIn, role: str, request_id: str | None) ->
 
 def h_search_policy(inp: PolicySearchIn, role: str, request_id: str | None) -> dict:
     _require(role, "policy:read")
+    # Prefer RAG retrieval; fall back to static pack
+    try:
+        from app.rag.service import retrieve_dict
+
+        with session_scope() as s:
+            out = retrieve_dict(s, inp.query, top_k=4, min_score=0.10)
+        if out["count"]:
+            return {
+                "policies": [
+                    {
+                        "id": c["document_id"],
+                        "title": c["title"],
+                        "body": c["text"],
+                        "source": c["source"],
+                        "score": c["score"],
+                        "chunk_index": c["chunk_index"],
+                    }
+                    for c in out["citations"]
+                ],
+                "retrieval": "rag",
+            }
+    except Exception as e:  # pragma: no cover  # noqa: BLE001
+        logger.warning("rag_fallback error=%s", e)
     q = inp.query.lower()
     hits = [
         p
         for p in POLICIES
         if q in p["title"].lower() or q in p["body"].lower() or any(q in t for t in p["tags"])
     ]
-    return {"policies": hits}
+    return {"policies": hits, "retrieval": "static"}
 
 
 TOOLS: dict[str, ToolSpec] = {}

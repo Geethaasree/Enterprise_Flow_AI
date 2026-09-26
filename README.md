@@ -60,6 +60,8 @@ pytest -q
 | POST | `/enterprise/orders` | Create draft/reserved order |
 | GET | `/mcp/tools` | List MCP tools |
 | POST | `/mcp/call` | Invoke MCP tool (X-Role header) |
+| POST | `/rag/ingest` | Ingest policy documents |
+| POST | `/rag/search` | Policy similarity search + citations |
 
 ## Phase 4 — Database
 

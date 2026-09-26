@@ -21,6 +21,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
 
+try:
+    from pgvector.sqlalchemy import Vector
+except ImportError:  # pragma: no cover
+    Vector = None  # type: ignore
+
 
 def _uuid() -> str:
     return uuid.uuid4().hex
@@ -250,3 +255,31 @@ class WorkflowExecution(Base, TimestampMixin):
     user_request: Mapped[str | None] = mapped_column(Text, nullable=True)
     final_response: Mapped[str | None] = mapped_column(Text, nullable=True)
     steps_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class PolicyDocument(Base, TimestampMixin):
+    __tablename__ = "policy_documents"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    title: Mapped[str] = mapped_column(String(255))
+    source_file: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    body: Mapped[str] = mapped_column(Text)
+
+    chunks: Mapped[list[PolicyChunk]] = relationship(
+        back_populates="document", cascade="all, delete-orphan"
+    )
+
+
+class PolicyChunk(Base, TimestampMixin):
+    __tablename__ = "policy_chunks"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    document_id: Mapped[str] = mapped_column(ForeignKey("policy_documents.id"), index=True)
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    start_char: Mapped[int] = mapped_column(Integer, default=0)
+    end_char: Mapped[int] = mapped_column(Integer, default=0)
+    # pgvector column when extension available; also kept as JSON for portability
+    embedding: Mapped[list | None] = mapped_column(Vector(384) if Vector else Text, nullable=True)
+
+    document: Mapped[PolicyDocument] = relationship(back_populates="chunks")

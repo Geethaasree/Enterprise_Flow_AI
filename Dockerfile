@@ -10,6 +10,7 @@ COPY pyproject.toml README.md ./
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
+COPY data ./data
 COPY scripts/entrypoint.sh ./scripts/entrypoint.sh
 
 RUN pip install --upgrade pip && pip install . \
