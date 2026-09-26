@@ -50,8 +50,19 @@ pytest -q
 | GET | `/health/redis` | Redis connectivity |
 | GET | `/llm/status` | Grok credential status (no secret values) |
 | POST | `/llm/chat` | Smoke chat against Grok |
+| POST | `/workflows/run` | Run LangGraph workflow (Phase 3) |
+| GET | `/workflows/{id}` | Read checkpointed workflow state |
 
-## Grok credentials
+## Phase 3 — LangGraph
+
+Supervisor routes to order / inventory / general stubs. Checkpointing uses
+in-memory `MemorySaver` (process-local). Real specialists arrive in Phase 7.
+
+```bash
+curl -s http://localhost:8010/workflows/run \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Create an order for 100 laptops for ACME."}'
+```
 
 Set `XAI_API_KEY` in `.env`, **or** leave empty to reuse Hermes SuperGrok OAuth
 from `~/.hermes/auth.json` (same subscription as this VPS Hermes session).
