@@ -1,0 +1,30 @@
+"""FastAPI application entrypoint."""
+
+from __future__ import annotations
+
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+from app.config import get_settings
+from app.logging_setup import setup_logging
+from app.routes.health import router as health_router
+
+settings = get_settings()
+setup_logging(settings.log_level)
+logger = logging.getLogger(__name__)
+
+
+def create_app() -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        logger.info("application_started env=%s", settings.app_env)
+        yield
+
+    app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+    app.include_router(health_router)
+    return app
+
+
+app = create_app()

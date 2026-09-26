@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: enterpriseflow
+      POSTGRES_PASSWORD: enterpriseflow
+      POSTGRES_DB: enterpriseflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - ef_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U enterpriseflow -d enterpriseflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    ports:
+      # host 8000 is Coolify on this VPS
+      - "8010:8000"
+    environment:
+      APP_NAME: EnterpriseFlow AI
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+psycopg://enterpriseflow:enterpriseflow@db:5432/enterpriseflow
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  ef_pgdata:
