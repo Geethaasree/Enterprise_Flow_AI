@@ -66,6 +66,10 @@ pytest -q
 | GET | `/workflows/memory/business/{code}` | Long-term customer memory |
 | GET | `/approvals` | List pending approvals |
 | POST | `/approvals/{id}/decide` | Approve/reject + resume graph |
+| GET/POST | `/sap/*` | SAP-style simulator (KUNNR/MATNR/…) |
+| GET/POST | `/system/*` | System API (canonical DTOs over SAP) |
+| POST | `/process/orders` | Process API orchestration |
+| POST | `/experience/orders` | Experience API channel DTO |
 
 ## Phase 4 — Database
 
