@@ -213,7 +213,7 @@ def _idem_get(key: str | None) -> dict[str, Any] | None:
         hit = cache_get("idem", key)
         if isinstance(hit, dict):
             return hit
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     with _IDEM_LOCK:
         return _IDEMPOTENCY.get(key)
@@ -226,7 +226,7 @@ def _idem_put(key: str | None, value: dict[str, Any]) -> None:
         from app.memory import cache_set
 
         cache_set("idem", key, value, ttl=60 * 60 * 24)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     with _IDEM_LOCK:
         _IDEMPOTENCY[key] = value
@@ -319,7 +319,7 @@ def h_check_inventory(inp: SkuIn, role: str, request_id: str | None) -> dict:
         hit = cache_get("inv", inp.sku.upper())
         if isinstance(hit, dict):
             return {**hit, "cached": True}
-    except Exception:  # noqa: BLE001
+    except Exception:
         hit = None
     with session_scope() as s:
         v = InventoryService(s).view(inp.sku)
@@ -334,7 +334,7 @@ def h_check_inventory(inp: SkuIn, role: str, request_id: str | None) -> dict:
         from app.memory import cache_set
 
         cache_set("inv", inp.sku.upper(), out, ttl=15)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return out
 
@@ -361,7 +361,7 @@ def h_reserve_inventory(inp: QtySkuIn, role: str, request_id: str | None) -> dic
             _idem_put(inp.idempotency_key, out)
     try:
         cache_delete("inv", inp.sku.upper())
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return out
 
@@ -388,7 +388,7 @@ def h_release_inventory(inp: QtySkuIn, role: str, request_id: str | None) -> dic
             _idem_put(inp.idempotency_key, out)
     try:
         cache_delete("inv", inp.sku.upper())
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return out
 
@@ -402,7 +402,7 @@ def h_get_price(inp: PriceIn, role: str, request_id: str | None) -> dict:
         hit = cache_get("price", ck)
         if isinstance(hit, dict):
             return {**hit, "cached": True}
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     with session_scope() as s:
         q = PricingService(s).quote(inp.sku, inp.quantity, inp.customer_code)
@@ -417,7 +417,7 @@ def h_get_price(inp: PriceIn, role: str, request_id: str | None) -> dict:
         from app.memory import cache_set
 
         cache_set("price", ck, out, ttl=60)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
     return out
 
@@ -555,7 +555,7 @@ def h_search_policy(inp: PolicySearchIn, role: str, request_id: str | None) -> d
                 ],
                 "retrieval": "rag",
             }
-    except Exception as e:  # pragma: no cover  # noqa: BLE001
+    except Exception as e:  # pragma: no cover
         logger.warning("rag_fallback error=%s", e)
     q = inp.query.lower()
     hits = [

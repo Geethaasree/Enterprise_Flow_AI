@@ -112,7 +112,7 @@ def run_workflow(
             from app.memory import build_context_bundle
 
             memory_bundle = build_context_bundle(session_id)
-        except Exception:  # noqa: BLE001
+        except Exception:
             memory_bundle = {"session_id": session_id}
 
     initial: GraphState = {
