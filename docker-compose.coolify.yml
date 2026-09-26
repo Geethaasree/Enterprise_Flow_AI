@@ -1,0 +1,113 @@
+# Coolify / Traefik public stack on this VPS.
+# Public UI:  http(s)://<host>/ef
+# API is internal only (Next /backend rewrite). Postgres/Redis not published.
+#
+#   cp deploy/prod.env.example deploy/prod.env   # secrets
+#   sudo docker compose -f docker-compose.coolify.yml --env-file deploy/prod.env up -d --build
+#
+# Traefik route file: /data/coolify/proxy/dynamic/enterpriseflow.yaml
+
+name: enterpriseflow
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: ef-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-enterpriseflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-enterpriseflow}
+    volumes:
+      - ef_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-enterpriseflow} -d ${POSTGRES_DB:-enterpriseflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [ef]
+
+  redis:
+    image: redis:7-alpine
+    container_name: ef-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - ef_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [ef]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ef-api
+    restart: unless-stopped
+    environment:
+      APP_NAME: EnterpriseFlow AI
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      HOME: /home/app
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-enterpriseflow}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-enterpriseflow}
+      REDIS_URL: redis://redis:6379/0
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      XAI_MODEL: ${XAI_MODEL:-grok-4.5}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI:-file:/app/mlruns}
+      MLFLOW_EXPERIMENT: ${MLFLOW_EXPERIMENT:-enterpriseflow}
+      EF_JWT_SECRET: ${EF_JWT_SECRET:?set EF_JWT_SECRET}
+      EF_AUTH_REQUIRED: ${EF_AUTH_REQUIRED:-0}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      - ef_mlruns:/app/mlruns
+      # optional Hermes oauth for Grok without XAI_API_KEY
+      - ${HERMES_AUTH_JSON:-./deploy/secrets/hermes-auth.json}:/home/app/.hermes/auth.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 50s
+    networks: [ef]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_INTERNAL_URL: http://api:8000
+        NEXT_BASE_PATH: /ef
+    container_name: ef-frontend
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: /backend
+      NEXT_BASE_PATH: /ef
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/ef/login"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    networks: [ef, coolify]
+
+networks:
+  ef:
+  coolify:
+    external: true
+
+volumes:
+  ef_pgdata:
+  ef_redis:
+  ef_mlruns:

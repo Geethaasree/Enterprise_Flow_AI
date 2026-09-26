@@ -1,0 +1,26 @@
+# Traefik file provider — install:
+#   sudo tee /data/coolify/proxy/dynamic/enterpriseflow.yaml < deploy/traefik-enterpriseflow.yaml
+#
+# Public UI only (API stays on internal Docker network via Next /backend rewrite).
+# Postgres and Redis are not routed.
+
+http:
+  routers:
+    enterpriseflow-http:
+      rule: PathPrefix(`/ef`)
+      entryPoints:
+        - http
+      service: enterpriseflow-frontend
+      priority: 120
+    enterpriseflow-https:
+      rule: PathPrefix(`/ef`)
+      entryPoints:
+        - https
+      service: enterpriseflow-frontend
+      priority: 120
+      tls: {}
+  services:
+    enterpriseflow-frontend:
+      loadBalancer:
+        servers:
+          - url: "http://ef-frontend:3000"

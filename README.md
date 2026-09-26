@@ -125,6 +125,19 @@ curl -sf http://localhost:3010/login >/dev/null
 
 Dev compose (`docker-compose.yml`) still works for day-to-day.
 
+## Phase 16 — Coolify & CI/CD
+
+- GitHub Actions: `.github/workflows/ci.yml` (ruff, pytest, docker build)
+- Public path UI: **`/ef`** via Coolify Traefik (API internal only)
+- Compose: `docker-compose.coolify.yml` + `deploy/traefik-enterpriseflow.yaml`
+- Guide: [`docs/DEPLOY.md`](docs/DEPLOY.md)
+
+```bash
+sudo tee /data/coolify/proxy/dynamic/enterpriseflow.yaml < deploy/traefik-enterpriseflow.yaml
+sudo docker compose -f docker-compose.coolify.yml --env-file deploy/prod.env up -d --build
+# UI: http://<public-ip>/ef/login
+```
+
 ## Phase 11 — MLflow
 
 File tracking URI (`MLFLOW_TRACKING_URI`, default `./mlruns`). Workflow/agent/tool/RAG/LLM spans are nested runs. Evaluation datasets live under `evaluations/datasets/`.

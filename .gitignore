@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 deploy/prod.env
+deploy/secrets/
 
 # python
 __pycache__/

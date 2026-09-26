@@ -16,7 +16,25 @@ from app.rag.embeddings import cosine, embed_text
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_POLICY_DIR = Path(__file__).resolve().parents[2] / "data" / "policies"
+
+def policy_dir() -> Path:
+    import os
+
+    env = (os.environ.get("EF_POLICY_DIR") or "").strip()
+    if env:
+        return Path(env)
+    # /app/data when running container image; repo root when editable install
+    for candidate in (
+        Path("/app/data/policies"),
+        Path(__file__).resolve().parents[2] / "data" / "policies",
+        Path.cwd() / "data" / "policies",
+    ):
+        if candidate.is_dir():
+            return candidate
+    return Path(__file__).resolve().parents[2] / "data" / "policies"
+
+
+DEFAULT_POLICY_DIR = policy_dir()  # resolved at import; call policy_dir() for live
 
 
 @dataclass
@@ -69,7 +87,7 @@ def ingest_file(session: Session, path: Path, *, title: str | None = None) -> m.
 
 
 def ingest_directory(session: Session, directory: Path | None = None) -> dict[str, Any]:
-    d = directory or DEFAULT_POLICY_DIR
+    d = directory or policy_dir()
     if not d.exists():
         return {"ingested": 0, "error": f"missing {d}"}
     count = 0
