@@ -8,19 +8,26 @@ from app.graph.state import GraphState
 
 
 def classify_intent(user_request: str) -> tuple[str, str, list[str], str | None]:
-    """
-    Return (intent, route, required_agents, customer_hint).
-
-    ponytail: rule-based supervisor for Phase 3; LLM classification when Phase 7 needs it.
-    """
+    """Return (intent, route, required_agents, customer_hint)."""
     text = (user_request or "").strip()
     lower = text.lower()
     customer = _extract_customer(text)
 
-    if any(k in lower for k in ("order", "purchase", "buy", "procure")):
-        return "create_order", "order", ["customer", "inventory", "pricing", "order"], customer
-    if any(k in lower for k in ("inventory", "stock", "availability", "on hand")):
+    if any(k in lower for k in ("policy", "return window", "approval rule", "what is the")):
+        if any(k in lower for k in ("order", "buy", "purchase")) and "policy" not in lower:
+            pass  # fall through to order if primarily order
+        elif any(
+            k in lower
+            for k in ("policy", "return", "credit limit policy", "discount policy", "shipping policy")
+        ):
+            return "policy", "policy", ["policy"], customer
+
+    if any(k in lower for k in ("order", "purchase", "buy", "procure", "units for")):
+        return "create_order", "order", ["customer", "inventory", "pricing", "order", "policy"], customer
+    if any(k in lower for k in ("inventory", "stock", "availability", "on hand", "how many")):
         return "check_inventory", "inventory", ["inventory"], customer
+    if any(k in lower for k in ("policy", "return", "approval", "discount rules")):
+        return "policy", "policy", ["policy"], customer
     return "general", "general", [], customer
 
 
@@ -55,6 +62,6 @@ def supervisor_node(state: GraphState) -> dict:
 
 def route_after_supervisor(state: GraphState) -> str:
     route = state.get("route") or "general"
-    if route in {"order", "inventory", "general"}:
+    if route in {"order", "inventory", "policy", "general"}:
         return route
     return "general"
