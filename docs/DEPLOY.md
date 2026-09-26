@@ -33,7 +33,7 @@ curl -sf --connect-timeout 8 http://163.192.122.138/ef/login -o /dev/null -w '%{
 
 ## CI (GitHub Actions)
 
-`.github/workflows/ci.yml` on `main` / PRs:
+`deploy/github-ci.yml (copy to .github/workflows/ci.yml when PAT has workflow scope)` on `main` / PRs:
 
 1. Ruff + pytest (Postgres + Redis service containers)
 2. Docker build API + frontend (`NEXT_BASE_PATH=/ef`) + MCP

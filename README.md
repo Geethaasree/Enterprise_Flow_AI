@@ -127,7 +127,7 @@ Dev compose (`docker-compose.yml`) still works for day-to-day.
 
 ## Phase 16 — Coolify & CI/CD
 
-- GitHub Actions: `.github/workflows/ci.yml` (ruff, pytest, docker build)
+- GitHub Actions: `deploy/github-ci.yml (copy to .github/workflows/ci.yml when PAT has workflow scope)` (ruff, pytest, docker build)
 - Public path UI: **`/ef`** via Coolify Traefik (API internal only)
 - Compose: `docker-compose.coolify.yml` + `deploy/traefik-enterpriseflow.yaml`
 - Guide: [`docs/DEPLOY.md`](docs/DEPLOY.md)
