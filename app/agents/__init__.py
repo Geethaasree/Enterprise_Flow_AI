@@ -443,7 +443,11 @@ def compose_order_response(state: GraphState) -> str:
     order = (ctx.get("order") or {}).get("result") or {}
     price = (ctx.get("price") or {}).get("result") or {}
     inv = (ctx.get("reservation") or ctx.get("inventory") or {}).get("result") or {}
-    approval = "pending_approval" if ctx.get("needs_approval") else "ok"
+    approval = "ok"
+    if ctx.get("approval_status") == "approved":
+        approval = "approved"
+    elif ctx.get("needs_approval"):
+        approval = "pending_approval"
     return (
         f"Order {order.get('order_number')} created for {cust.get('name') or ctx.get('customer_code')} "
         f"({ctx.get('sku')} x{ctx.get('quantity')}). "

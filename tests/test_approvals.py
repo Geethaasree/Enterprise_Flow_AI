@@ -35,7 +35,7 @@ def _seed():
         ):
             try:
                 s.execute(text(stmt))
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
         seed_enterprise(s, reset=True)
         s.execute(text("DELETE FROM policy_chunks"))
