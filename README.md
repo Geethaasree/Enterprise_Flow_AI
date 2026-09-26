@@ -52,8 +52,16 @@ pytest -q
 | POST | `/llm/chat` | Smoke chat against Grok |
 | POST | `/workflows/run` | Run LangGraph workflow (Phase 3) |
 | GET | `/workflows/{id}` | Read checkpointed workflow state |
+| POST | `/enterprise/seed` | Seed ACME + demo products |
+| GET | `/enterprise/customers/{code}` | Customer + contract |
+| GET | `/enterprise/inventory/{sku}` | Stock levels |
+| POST | `/enterprise/inventory/reserve` | Reserve stock |
+| GET | `/enterprise/pricing/quote` | Deterministic price quote |
+| POST | `/enterprise/orders` | Create draft/reserved order |
 
-## Phase 3 — LangGraph
+## Phase 4 — Database
+
+SQLAlchemy models + Alembic + seed (ACME, Laptop Pro 14). Migrations run on API boot.
 
 Supervisor routes to order / inventory / general stubs. Checkpointing uses
 in-memory `MemorySaver` (process-local). Real specialists arrive in Phase 7.
