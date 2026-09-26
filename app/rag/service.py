@@ -88,31 +88,34 @@ def retrieve(
     top_k: int = 4,
     min_score: float = 0.12,
 ) -> list[Citation]:
-    q_emb = embed_text(query)
-    # fetch candidates — ponytail: full scan OK for small policy corpus; IVF index later
-    rows = session.scalars(select(m.PolicyChunk)).all()
-    scored: list[tuple[float, m.PolicyChunk]] = []
-    for row in rows:
-        if not row.embedding:
-            continue
-        score = cosine(q_emb, list(row.embedding))
-        if score >= min_score:
-            scored.append((score, row))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    out: list[Citation] = []
-    for score, row in scored[:top_k]:
-        doc = row.document
-        out.append(
-            Citation(
-                document_id=doc.id if doc else row.document_id,
-                document_title=doc.title if doc else "",
-                source_file=doc.source_file if doc else "",
-                chunk_index=row.chunk_index,
-                score=round(float(score), 4),
-                text=row.content,
+    from app.observability import span
+
+    with span("rag.retrieve", kind="rag", attrs={"top_k": top_k}):
+        q_emb = embed_text(query)
+        # fetch candidates — ponytail: full scan OK for small policy corpus; IVF index later
+        rows = session.scalars(select(m.PolicyChunk)).all()
+        scored: list[tuple[float, m.PolicyChunk]] = []
+        for row in rows:
+            if not row.embedding:
+                continue
+            score = cosine(q_emb, list(row.embedding))
+            if score >= min_score:
+                scored.append((score, row))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        out: list[Citation] = []
+        for score, row in scored[:top_k]:
+            doc = row.document
+            out.append(
+                Citation(
+                    document_id=doc.id if doc else row.document_id,
+                    document_title=doc.title if doc else "",
+                    source_file=doc.source_file if doc else "",
+                    chunk_index=row.chunk_index,
+                    score=round(float(score), 4),
+                    text=row.content,
+                )
             )
-        )
-    return out
+        return out
 
 
 def retrieve_dict(session: Session, query: str, **kwargs) -> dict[str, Any]:

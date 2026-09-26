@@ -31,3 +31,5 @@ htmlcov/
 logs/
 data/
 .mlflow/
+mlruns/
+evaluations/last_run.json

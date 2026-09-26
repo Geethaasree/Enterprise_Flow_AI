@@ -70,6 +70,12 @@ pytest -q
 | GET/POST | `/system/*` | System API (canonical DTOs over SAP) |
 | POST | `/process/orders` | Process API orchestration |
 | POST | `/experience/orders` | Experience API channel DTO |
+| POST | `/evaluations/run` | Run eval suites + log MLflow metrics |
+| GET | `/evaluations/runs` | Recent MLflow runs (file store) |
+
+## Phase 11 — MLflow
+
+File tracking URI (`MLFLOW_TRACKING_URI`, default `./mlruns`). Workflow/agent/tool/RAG/LLM spans are nested runs. Evaluation datasets live under `evaluations/datasets/`.
 
 ## Phase 4 — Database
 

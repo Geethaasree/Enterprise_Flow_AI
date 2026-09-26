@@ -71,7 +71,19 @@ class XAIProvider(LLMProvider):
             payload["response_format"] = response_format
 
         data = self._request_json("POST", "/chat/completions", payload)
-        return _parse_chat_response(data)
+        resp = _parse_chat_response(data)
+        try:
+            from app.observability import record_tokens, span
+
+            with span("llm.chat", kind="llm", attrs={"model": resp.model or self.model}):
+                record_tokens(
+                    prompt=resp.usage.prompt_tokens,
+                    completion=resp.usage.completion_tokens,
+                    total=resp.usage.total_tokens,
+                )
+        except Exception:
+            pass
+        return resp
 
     def _request_json(self, method: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         url = f"{self.base_url}{path}"

@@ -17,6 +17,7 @@ from app.routes.api_led import (
 )
 from app.routes.approvals import router as approvals_router
 from app.routes.enterprise import router as enterprise_router
+from app.routes.evaluations import router as evaluations_router
 from app.routes.health import router as health_router
 from app.routes.llm import router as llm_router
 from app.routes.mcp import router as mcp_router
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(system_router)
     app.include_router(process_router)
     app.include_router(experience_router)
+    app.include_router(evaluations_router)
     return app
 
 

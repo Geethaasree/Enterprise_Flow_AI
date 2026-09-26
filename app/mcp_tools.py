@@ -682,6 +682,8 @@ def call_tool(
     request_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute a named MCP tool. Returns structured result or raises ToolError."""
+    from app.observability import span
+
     _bootstrap()
     spec = TOOLS.get(name)
     if not spec:
@@ -690,11 +692,12 @@ def call_tool(
         inp = spec.input_model.model_validate(arguments or {})
     except ValidationError as e:
         raise ToolError("INVALID_INPUT", e.errors().__repr__(), http_status=422) from e
-    try:
-        result = spec.handler(inp, role, request_id)
-    except ServiceError as e:
-        status = 404 if "NOT_FOUND" in e.code else 409 if e.code == "INSUFFICIENT_STOCK" else 400
-        raise ToolError(e.code, e.message, http_status=status) from e
+    with span(name, kind="tool", attrs={"role": role, "request_id": request_id or ""}):
+        try:
+            result = spec.handler(inp, role, request_id)
+        except ServiceError as e:
+            status = 404 if "NOT_FOUND" in e.code else 409 if e.code == "INSUFFICIENT_STOCK" else 400
+            raise ToolError(e.code, e.message, http_status=status) from e
     logger.info(
         "mcp_tool name=%s role=%s request_id=%s side_effects=%s",
         name,

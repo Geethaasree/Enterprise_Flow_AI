@@ -11,6 +11,7 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 COPY data ./data
+COPY evaluations ./evaluations
 COPY scripts/entrypoint.sh ./scripts/entrypoint.sh
 
 RUN pip install --upgrade pip && pip install . \

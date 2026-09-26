@@ -21,21 +21,31 @@ from app.agents import (
 )
 from app.graph.state import GraphState, new_request_id, new_workflow_id
 from app.graph.supervisor import route_after_supervisor, supervisor_node
+from app.observability import span
 
 _checkpointer = MemorySaver()
 
 
+def _agent(name: str, fn):
+    def _wrapped(state: GraphState):
+        with span(name, kind="agent"):
+            return fn(state)
+
+    _wrapped.__name__ = name
+    return _wrapped
+
+
 def build_graph(checkpointer: MemorySaver | None = None):
     g = StateGraph(GraphState)
-    g.add_node("supervisor", supervisor_node)
-    g.add_node("customer_agent", customer_agent)
-    g.add_node("inventory_agent", inventory_agent)
-    g.add_node("pricing_agent", pricing_agent)
-    g.add_node("approval_agent", approval_agent)
-    g.add_node("order_agent", order_agent)
-    g.add_node("policy_agent", policy_agent)
-    g.add_node("general_agent", general_agent)
-    g.add_node("finalize", finalize_agent)
+    g.add_node("supervisor", _agent("supervisor", supervisor_node))
+    g.add_node("customer_agent", _agent("customer_agent", customer_agent))
+    g.add_node("inventory_agent", _agent("inventory_agent", inventory_agent))
+    g.add_node("pricing_agent", _agent("pricing_agent", pricing_agent))
+    g.add_node("approval_agent", _agent("approval_agent", approval_agent))
+    g.add_node("order_agent", _agent("order_agent", order_agent))
+    g.add_node("policy_agent", _agent("policy_agent", policy_agent))
+    g.add_node("general_agent", _agent("general_agent", general_agent))
+    g.add_node("finalize", _agent("finalize", finalize_agent))
 
     g.add_edge(START, "supervisor")
     g.add_conditional_edges(
@@ -125,6 +135,8 @@ def run_workflow(
     wid = workflow_id or new_workflow_id()
     compiled = graph or get_compiled_graph()
 
+    from app.observability import log_outcome, span, workflow_run
+
     memory_bundle: dict[str, Any] = {}
     if session_id:
         try:
@@ -152,31 +164,46 @@ def run_workflow(
         },
     }
     config = {"configurable": {"thread_id": wid}}
-    result = compiled.invoke(initial, config=config)  # type: ignore[arg-type]
-    out = dict(result)
 
-    paused = _interrupted_payload(compiled, config)
-    if paused:
-        vals = paused.get("values") or {}
-        ctx = vals.get("context") or out.get("context") or {}
-        interrupt_info = (paused.get("interrupts") or [None])[0] or {}
-        out["status"] = "awaiting_approval"
-        out["workflow_id"] = wid
-        out["request_id"] = rid
-        out["intent"] = vals.get("intent") or out.get("intent")
-        out["steps"] = vals.get("steps") or out.get("steps")
-        out["notes"] = vals.get("notes") or out.get("notes")
-        out["context"] = ctx
-        out["approval"] = interrupt_info
-        out["final_response"] = (
-            f"Approval required ({interrupt_info.get('approval_type') or 'review'}): "
-            f"{interrupt_info.get('reason') or 'pending human decision'}. "
-            f"approval_id={interrupt_info.get('approval_id')}"
+    with workflow_run(
+        name=f"workflow:{wid}",
+        request_id=rid,
+        workflow_id=wid,
+        session_id=session_id,
+        tags={"entry": "run_workflow"},
+    ):
+        with span("graph.invoke", kind="workflow"):
+            result = compiled.invoke(initial, config=config)  # type: ignore[arg-type]
+        out = dict(result)
+
+        paused = _interrupted_payload(compiled, config)
+        if paused:
+            vals = paused.get("values") or {}
+            ctx = vals.get("context") or out.get("context") or {}
+            interrupt_info = (paused.get("interrupts") or [None])[0] or {}
+            out["status"] = "awaiting_approval"
+            out["workflow_id"] = wid
+            out["request_id"] = rid
+            out["intent"] = vals.get("intent") or out.get("intent")
+            out["steps"] = vals.get("steps") or out.get("steps")
+            out["notes"] = vals.get("notes") or out.get("notes")
+            out["context"] = ctx
+            out["approval"] = interrupt_info
+            out["final_response"] = (
+                f"Approval required ({interrupt_info.get('approval_type') or 'review'}): "
+                f"{interrupt_info.get('reason') or 'pending human decision'}. "
+                f"approval_id={interrupt_info.get('approval_id')}"
+            )
+            log_outcome("awaiting_approval", extra={"approval_id": interrupt_info.get("approval_id")})
+            return out
+
+        out.setdefault("status", "ok" if not out.get("error") else "error")
+        log_outcome(
+            str(out.get("status") or "ok"),
+            error=out.get("error"),
+            extra={"intent": out.get("intent"), "steps": len(out.get("steps") or [])},
         )
         return out
-
-    out.setdefault("status", "ok")
-    return out
 
 
 def resume_workflow(

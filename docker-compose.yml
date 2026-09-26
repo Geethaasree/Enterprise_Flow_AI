@@ -38,9 +38,12 @@ services:
       DATABASE_URL: postgresql+psycopg://enterpriseflow:enterpriseflow@db:5432/enterpriseflow
       REDIS_URL: redis://redis:6379/0
       XAI_MODEL: grok-4.5
+      MLFLOW_TRACKING_URI: file:/app/mlruns
+      MLFLOW_EXPERIMENT: enterpriseflow
       # XAI_API_KEY optional; falls back to mounted Hermes xai-oauth
     volumes:
       - /home/ubuntu/.hermes/auth.json:/home/ubuntu/.hermes/auth.json:ro
+      - ef_mlruns:/app/mlruns
     depends_on:
       db:
         condition: service_healthy
@@ -49,3 +52,4 @@ services:
 
 volumes:
   ef_pgdata:
+  ef_mlruns:

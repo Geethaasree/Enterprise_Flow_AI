@@ -1,0 +1,43 @@
+{
+  "suite": "rag",
+  "cases": [
+    {
+      "id": "rag_return_policy",
+      "query": "return policy restocking fee",
+      "top_k": 3,
+      "expect": {
+        "min_hits": 1,
+        "source_contains": "return",
+        "min_top_score": 0.01
+      }
+    },
+    {
+      "id": "rag_credit_limit",
+      "query": "credit limit approval manager",
+      "top_k": 3,
+      "expect": {
+        "min_hits": 1,
+        "source_contains": "credit",
+        "min_top_score": 0.01
+      }
+    },
+    {
+      "id": "rag_shipping",
+      "query": "overnight shipping SLA days",
+      "top_k": 3,
+      "expect": {
+        "min_hits": 1,
+        "min_top_score": 0.01
+      }
+    },
+    {
+      "id": "rag_irrelevant_weak",
+      "query": "quantum banana teleportation recipes",
+      "top_k": 3,
+      "min_score": 0.12,
+      "expect": {
+        "max_hits": 0
+      }
+    }
+  ]
+}

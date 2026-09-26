@@ -1,0 +1,55 @@
+{
+  "suite": "workflow",
+  "cases": [
+    {
+      "id": "order_valid",
+      "message": "Create an order for 1 Laptop Pro 14 units for ACME.",
+      "expect": {
+        "status": "ok",
+        "has_order": true,
+        "steps_include": ["customer_agent", "inventory_agent", "pricing_agent", "order_agent"],
+        "tools": ["get_customer", "check_inventory", "create_order"]
+      }
+    },
+    {
+      "id": "order_bad_customer",
+      "message": "Create an order for 1 Laptop Pro 14 units for NOPECORP.",
+      "expect": {
+        "no_order": true,
+        "error_contains": "not found"
+      }
+    },
+    {
+      "id": "order_insufficient_stock",
+      "message": "Create an order for 500 Laptop Pro 14 units for ACME.",
+      "expect": {
+        "no_order": true,
+        "error_contains": "stock"
+      }
+    },
+    {
+      "id": "order_discount_approval",
+      "message": "Create an order for 1 Laptop Pro 14 units for ACME with 15% discount exception",
+      "expect": {
+        "status": "awaiting_approval",
+        "awaiting_approval": true,
+        "no_order": true
+      }
+    },
+    {
+      "id": "order_bad_sku",
+      "message": "Create an order for 1 FAKE-SKU-999 units for ACME.",
+      "expect": {
+        "no_order": true
+      }
+    },
+    {
+      "id": "policy_query",
+      "message": "What is the return policy for enterprise customers?",
+      "expect": {
+        "steps_include": ["policy_agent"],
+        "tools": ["search_policy"]
+      }
+    }
+  ]
+}
