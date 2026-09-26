@@ -105,6 +105,26 @@ curl -s http://localhost:8010/health/observability
 # backend=file until DATABRICKS_* is set
 ```
 
+## Phase 15 — Production Docker
+
+Multi-stage non-root images + prod compose:
+
+| Image | Path |
+|-------|------|
+| API | `Dockerfile` |
+| Frontend | `frontend/Dockerfile` |
+| MCP | `mcp/Dockerfile` (same app; `/mcp/*`) |
+| Worker | `worker/Dockerfile` (batch evals, optional) |
+
+```bash
+cp deploy/prod.env.example deploy/prod.env   # set POSTGRES_PASSWORD + EF_JWT_SECRET
+docker compose -f docker-compose.prod.yml --env-file deploy/prod.env up -d --build
+curl -sf http://localhost:8010/health
+curl -sf http://localhost:3010/login >/dev/null
+```
+
+Dev compose (`docker-compose.yml`) still works for day-to-day.
+
 ## Phase 11 — MLflow
 
 File tracking URI (`MLFLOW_TRACKING_URI`, default `./mlruns`). Workflow/agent/tool/RAG/LLM spans are nested runs. Evaluation datasets live under `evaluations/datasets/`.
