@@ -1,7 +1,9 @@
+const BASE_PATH = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
+
 const API_BASE =
   typeof window === "undefined"
     ? process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8010"
-    : process.env.NEXT_PUBLIC_API_URL || "/backend";
+    : `${BASE_PATH}${process.env.NEXT_PUBLIC_API_URL || "/backend"}`;
 
 export type Json = Record<string, unknown>;
 
@@ -43,7 +45,8 @@ export async function login(username: string, password: string) {
     body: JSON.stringify({ username, password }),
   });
   if (!ok || !data.access_token) {
-    throw new Error(data.detail || `login failed (${status})`);
+    const detail = typeof data.detail === "string" ? data.detail : undefined;
+    throw new Error(detail || `login failed (${status})`);
   }
   localStorage.setItem("ef_token", data.access_token);
   localStorage.setItem("ef_role", data.role || "sales");
