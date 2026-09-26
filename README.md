@@ -48,6 +48,7 @@ pytest -q
 | GET | `/health` | Process liveness |
 | GET | `/health/db` | PostgreSQL connectivity |
 | GET | `/health/redis` | Redis connectivity |
+| GET | `/health/observability` | MLflow backend (file/databricks/http) |
 | GET | `/llm/status` | Grok credential status (no secret values) |
 | POST | `/llm/chat` | Smoke chat against Grok |
 | POST | `/workflows/run` | Run LangGraph workflow (Phase 3) |
@@ -89,6 +90,20 @@ docker compose up -d --build frontend
 ```
 
 Demo login: `admin` / `admin`. Browser calls go through Next rewrite `/backend/*` → API.
+
+## Phase 14 — Databricks path
+
+Optional enterprise MLflow target. Local file store stays default — no Databricks account required.
+
+- Architecture + env matrix: [`docs/DATABRICKS.md`](docs/DATABRICKS.md)
+- Env sample: `deploy/databricks.env.example`
+- Adapter: `app/databricks_path.py` (auto `MLFLOW_TRACKING_URI=databricks` when host+token set)
+- Status: `GET /health/observability` (no secrets)
+
+```bash
+curl -s http://localhost:8010/health/observability
+# backend=file until DATABRICKS_* is set
+```
 
 ## Phase 11 — MLflow
 

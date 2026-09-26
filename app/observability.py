@@ -30,6 +30,9 @@ _DEFAULT_URI = str(Path(__file__).resolve().parents[2] / "mlruns")
 
 
 def tracking_uri() -> str:
+    from app.databricks_path import apply_databricks_env
+
+    apply_databricks_env()
     return os.environ.get("MLFLOW_TRACKING_URI") or f"file:{_DEFAULT_URI}"
 
 

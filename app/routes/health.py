@@ -51,3 +51,10 @@ def health_redis() -> JSONResponse:
             {"status": "error", "dependency": "redis", "detail": str(exc)},
             status_code=503,
         )
+
+
+@router.get("/health/observability")
+def health_observability() -> dict:
+    from app.databricks_path import observability_status
+
+    return {"status": "ok", **observability_status()}
