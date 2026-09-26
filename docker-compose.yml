@@ -34,8 +34,13 @@ services:
       APP_NAME: EnterpriseFlow AI
       APP_ENV: development
       LOG_LEVEL: INFO
+      HOME: /home/ubuntu
       DATABASE_URL: postgresql+psycopg://enterpriseflow:enterpriseflow@db:5432/enterpriseflow
       REDIS_URL: redis://redis:6379/0
+      XAI_MODEL: grok-4.5
+      # XAI_API_KEY optional; falls back to mounted Hermes xai-oauth
+    volumes:
+      - /home/ubuntu/.hermes/auth.json:/home/ubuntu/.hermes/auth.json:ro
     depends_on:
       db:
         condition: service_healthy

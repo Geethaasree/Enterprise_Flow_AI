@@ -48,8 +48,19 @@ pytest -q
 | GET | `/health` | Process liveness |
 | GET | `/health/db` | PostgreSQL connectivity |
 | GET | `/health/redis` | Redis connectivity |
+| GET | `/llm/status` | Grok credential status (no secret values) |
+| POST | `/llm/chat` | Smoke chat against Grok |
 
-## Specs
+## Grok credentials
+
+Set `XAI_API_KEY` in `.env`, **or** leave empty to reuse Hermes SuperGrok OAuth
+from `~/.hermes/auth.json` (same subscription as this VPS Hermes session).
+
+Live LLM tests:
+
+```bash
+EF_LIVE_LLM=1 pytest -q tests/test_llm_live.py
+```
 
 Source of truth: `./specs/` and `HERMES_GIT_WORKFLOW.md`.
 

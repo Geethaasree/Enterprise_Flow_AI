@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     )
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
 
+    # xAI / Grok (Phase 2). Empty key falls back to Hermes xai-oauth access token.
+    xai_api_key: str = Field(default="", alias="XAI_API_KEY")
+    xai_model: str = Field(default="grok-4.5", alias="XAI_MODEL")
+    xai_base_url: str = Field(default="https://api.x.ai/v1", alias="XAI_BASE_URL")
+    xai_timeout_seconds: float = Field(default=60.0, alias="XAI_TIMEOUT_SECONDS")
+    xai_max_retries: int = Field(default=2, alias="XAI_MAX_RETRIES")
+
 
 @lru_cache
 def get_settings() -> Settings:
