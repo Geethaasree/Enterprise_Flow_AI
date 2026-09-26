@@ -72,6 +72,11 @@ pytest -q
 | POST | `/experience/orders` | Experience API channel DTO |
 | POST | `/evaluations/run` | Run eval suites + log MLflow metrics |
 | GET | `/evaluations/runs` | Recent MLflow runs (file store) |
+| POST | `/auth/token` | Issue JWT (demo users) |
+
+## Phase 12 — Security
+
+JWT (HS256) + RBAC. Elevated roles require `Authorization: Bearer` or `X-Role` header — never body alone. Prompt injection blocked on `/workflows/run`. PII redacted in session/response text.
 
 ## Phase 11 — MLflow
 

@@ -40,6 +40,8 @@ services:
       XAI_MODEL: grok-4.5
       MLFLOW_TRACKING_URI: file:/app/mlruns
       MLFLOW_EXPERIMENT: enterpriseflow
+      EF_JWT_SECRET: enterpriseflow-dev-secret-change-me
+      EF_AUTH_REQUIRED: "0"
       # XAI_API_KEY optional; falls back to mounted Hermes xai-oauth
     volumes:
       - /home/ubuntu/.hermes/auth.json:/home/ubuntu/.hermes/auth.json:ro

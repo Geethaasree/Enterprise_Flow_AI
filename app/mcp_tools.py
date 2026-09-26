@@ -64,6 +64,26 @@ ROLE_PERMS: dict[str, set[str]] = {
         "shipping:read",
         "policy:read",
     },
+    "manager": {
+        "customer:read",
+        "product:read",
+        "inventory:read",
+        "inventory:reserve",
+        "pricing:read",
+        "order:create",
+        "order:read",
+        "order:cancel",
+        "shipping:read",
+        "policy:read",
+    },
+    "finance": {
+        "customer:read",
+        "product:read",
+        "inventory:read",
+        "pricing:read",
+        "order:read",
+        "policy:read",
+    },
 }
 
 SHIPPING_OPTIONS = [

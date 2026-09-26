@@ -19,6 +19,12 @@ from app.memory import (
     get_turns,
     rate_limit_allow,
 )
+from app.security import (
+    client_id_from_request,
+    redact_pii,
+    sanitize_user_message,
+    scan_prompt_injection,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/workflows", tags=["workflows"])
@@ -39,7 +45,7 @@ def workflows_run(
     x_client_id: str | None = Header(default=None, alias="X-Client-Id"),
 ) -> JSONResponse:
     # rate limit per client
-    client = x_client_id or (request.client.host if request.client else "anon")
+    client = client_id_from_request(request, x_client_id)
     allowed, rate_meta = rate_limit_allow(f"wf:{client}", limit=60, window=60)
     if not allowed:
         return JSONResponse(
@@ -47,20 +53,33 @@ def workflows_run(
             status_code=429,
         )
 
+    blocked, reason = scan_prompt_injection(body.message)
+    if blocked:
+        return JSONResponse(
+            {
+                "status": "error",
+                "code": "PROMPT_INJECTION",
+                "detail": "Message rejected by security policy",
+                "reason": reason,
+            },
+            status_code=400,
+        )
+
+    message = sanitize_user_message(body.message)
     session_id = body.session_id or x_session_id or f"sess_{uuid.uuid4().hex[:12]}"
     try:
-        append_turn(session_id, "user", body.message)
+        append_turn(session_id, "user", redact_pii(message))
     except Exception:
         logger.warning("session_append_failed", exc_info=True)
 
     try:
         state = run_workflow(
-            body.message,
+            message,
             request_id=body.request_id,
             workflow_id=body.workflow_id,
             session_id=session_id,
         )
-        final = state.get("final_response") or ""
+        final = redact_pii(state.get("final_response") or "")
         try:
             append_turn(
                 session_id,

@@ -65,9 +65,18 @@ def get_approval(approval_id: str) -> JSONResponse:
 def decide_approval(
     approval_id: str,
     body: DecideBody,
-    x_role: str | None = Header(default="admin", alias="X-Role"),
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    x_role: str | None = Header(default=None, alias="X-Role"),
 ) -> JSONResponse:
-    role = (body.role or x_role or "admin").lower()
+    from app.security import resolve_principal
+
+    principal = resolve_principal(
+        authorization=authorization,
+        x_role=x_role,
+        body_role=body.role,
+        default_role="viewer",
+    )
+    role = principal.role
     if role not in APPROVER_ROLES:
         return JSONResponse(
             {"status": "error", "code": "UNAUTHORIZED", "detail": f"Role {role!r} cannot approve"},

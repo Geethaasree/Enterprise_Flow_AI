@@ -16,6 +16,7 @@ from app.routes.api_led import (
     system_router,
 )
 from app.routes.approvals import router as approvals_router
+from app.routes.auth import router as auth_router
 from app.routes.enterprise import router as enterprise_router
 from app.routes.evaluations import router as evaluations_router
 from app.routes.health import router as health_router
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
     app.include_router(health_router)
+    app.include_router(auth_router)
     app.include_router(llm_router)
     app.include_router(workflows_router)
     app.include_router(enterprise_router)
