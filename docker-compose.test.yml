@@ -1,4 +1,4 @@
-# Isolated Postgres for automated tests ONLY.
+# Isolated Postgres+Redis for automated tests ONLY.
 # Never point this at Coolify prod (ef-db / enterpriseflow_ef_pgdata).
 #
 #   ./scripts/run-db-tests.sh
@@ -19,6 +19,18 @@ services:
       - ef_pgdata_test:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U enterpriseflow -d enterpriseflow_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [ef-test]
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: ef-redis-test
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
