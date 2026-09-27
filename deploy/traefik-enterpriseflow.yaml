@@ -1,11 +1,36 @@
-# Traefik file provider — install:
-#   sudo tee /data/coolify/proxy/dynamic/enterpriseflow.yaml < deploy/traefik-enterpriseflow.yaml
+# Traefik — EnterpriseFlow public routes
+# Install: sudo tee /data/coolify/proxy/dynamic/enterpriseflow.yaml < deploy/traefik-enterpriseflow.yaml
 #
-# Public UI only (API stays on internal Docker network via Next /backend rewrite).
-# Postgres and Redis are not routed.
+# App: /ef  (Next basePath). Root / redirects to /ef/login so bare IP is not "no available server".
 
 http:
+  middlewares:
+    ef-root-to-login:
+      redirectRegex:
+        regex: ^https?://([^/]+)/?$
+        replacement: http://${1}/ef/login
+        permanent: false
+
   routers:
+    # bare https://IP/ and http://IP/ → login (beats Coolify catchall 503)
+    enterpriseflow-root-http:
+      rule: Path(`/`)
+      entryPoints:
+        - http
+      middlewares:
+        - ef-root-to-login
+      service: enterpriseflow-frontend
+      priority: 200
+    enterpriseflow-root-https:
+      rule: Path(`/`)
+      entryPoints:
+        - https
+      middlewares:
+        - ef-root-to-login
+      service: enterpriseflow-frontend
+      priority: 200
+      tls: {}
+
     enterpriseflow-http:
       rule: PathPrefix(`/ef`)
       entryPoints:
@@ -19,6 +44,7 @@ http:
       service: enterpriseflow-frontend
       priority: 120
       tls: {}
+
   services:
     enterpriseflow-frontend:
       loadBalancer:
