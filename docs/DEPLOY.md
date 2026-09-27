@@ -70,3 +70,13 @@ Internet → Coolify Traefik :80/:443
 sudo docker compose -f docker-compose.coolify.yml --env-file deploy/prod.env down
 # optional: sudo rm /data/coolify/proxy/dynamic/enterpriseflow.yaml
 ```
+
+## Isolated DB tests (do not hit prod)
+
+```bash
+./scripts/run-db-tests.sh                 # all tests
+./scripts/run-db-tests.sh tests/test_rag.py
+```
+
+Uses `docker-compose.test.yml` → `ef-db-test` / DB `enterpriseflow_test` on host `:5433`.
+`tests/conftest.py` refuses `@db:5432/enterpriseflow` (Coolify live) unless `EF_ALLOW_LIVE_DB=1`.

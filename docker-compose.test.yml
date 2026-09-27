@@ -1,0 +1,31 @@
+# Isolated Postgres for automated tests ONLY.
+# Never point this at Coolify prod (ef-db / enterpriseflow_ef_pgdata).
+#
+#   ./scripts/run-db-tests.sh
+#
+name: enterpriseflow-test
+
+services:
+  db-test:
+    image: pgvector/pgvector:pg16
+    container_name: ef-db-test
+    environment:
+      POSTGRES_USER: enterpriseflow
+      POSTGRES_PASSWORD: ef_test_only
+      POSTGRES_DB: enterpriseflow_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - ef_pgdata_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U enterpriseflow -d enterpriseflow_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [ef-test]
+
+networks:
+  ef-test:
+
+volumes:
+  ef_pgdata_test:
