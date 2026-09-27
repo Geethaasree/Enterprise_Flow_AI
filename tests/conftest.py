@@ -17,13 +17,11 @@ def _looks_like_live_db(url: str) -> bool:
         return False
     if "enterpriseflow_test" in u:
         return False
-    if "@db:5432/enterpriseflow" in u:
-        return True
-    if "163.192.122.138" in u:
-        return True
-    if "@ef-db:" in u:
-        return True
-    return False
+    return (
+        "@db:5432/enterpriseflow" in u
+        or "163.192.122.138" in u
+        or "@ef-db:" in u
+    )
 
 
 def pytest_configure() -> None:
