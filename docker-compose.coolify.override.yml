@@ -1,0 +1,8 @@
+# local/public fallback ports (OCI may still block non-80/443 from outside)
+services:
+  frontend:
+    ports:
+      - "3010:3000"
+  api:
+    ports:
+      - "8010:8000"

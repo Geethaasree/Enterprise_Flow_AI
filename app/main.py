@@ -36,6 +36,11 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         logger.info("application_started env=%s", settings.app_env)
+        secret = os.environ.get("EF_JWT_SECRET", "")
+        if settings.app_env == "production" and (
+            not secret or secret == "enterpriseflow-dev-secret-change-me"
+        ):
+            logger.warning("EF_JWT_SECRET is default/empty in production — set a strong secret")
         yield
 
     app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)

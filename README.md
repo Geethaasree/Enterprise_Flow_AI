@@ -138,6 +138,21 @@ sudo docker compose -f docker-compose.coolify.yml --env-file deploy/prod.env up 
 # UI: http://<public-ip>/ef/login
 ```
 
+## Phase 17 — Interview package
+
+| Doc | Path |
+|-----|------|
+| Architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| Setup | [`docs/SETUP.md`](docs/SETUP.md) |
+| Deploy | [`docs/DEPLOY.md`](docs/DEPLOY.md) |
+| API | [`docs/API.md`](docs/API.md) |
+| Demo (8 scenarios) | [`docs/DEMO.md`](docs/DEMO.md) + `./scripts/demo_scenarios.sh` |
+| Interview | [`docs/INTERVIEW.md`](docs/INTERVIEW.md) |
+| Troubleshooting | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) |
+| Security review | [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) |
+
+Public demo: **http://163.192.122.138/ef/login** (`admin` / `admin`)
+
 ## Phase 11 — MLflow
 
 File tracking URI (`MLFLOW_TRACKING_URI`, default `./mlruns`). Workflow/agent/tool/RAG/LLM spans are nested runs. Evaluation datasets live under `evaluations/datasets/`.

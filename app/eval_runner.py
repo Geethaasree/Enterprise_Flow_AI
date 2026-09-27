@@ -11,7 +11,20 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "evaluations" / "datasets"
+
+def datasets_dir() -> Path:
+    """Resolve evaluation datasets in image (/app) or editable checkout."""
+    for candidate in (
+        Path("/app/evaluations/datasets"),
+        Path(__file__).resolve().parents[1] / "evaluations" / "datasets",
+        Path.cwd() / "evaluations" / "datasets",
+    ):
+        if candidate.is_dir():
+            return candidate
+    return Path(__file__).resolve().parents[1] / "evaluations" / "datasets"
+
+
+DATA_DIR = datasets_dir()
 
 
 @dataclass
@@ -26,7 +39,7 @@ class CaseResult:
 
 
 def load_suite(name: str) -> list[dict[str, Any]]:
-    path = DATA_DIR / f"{name}.json"
+    path = datasets_dir() / f"{name}.json"
     if not path.exists():
         raise FileNotFoundError(str(path))
     data = json.loads(path.read_text(encoding="utf-8"))

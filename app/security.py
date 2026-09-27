@@ -172,9 +172,19 @@ def scan_prompt_injection(text: str) -> tuple[bool, str | None]:
 def redact_pii(text: str) -> str:
     if not text:
         return text
-    out = _EMAIL_RE.sub("[REDACTED_EMAIL]", text)
+    # preserve order numbers (digit runs otherwise look like phones)
+    saved: list[str] = []
+
+    def _park_ord(m: re.Match[str]) -> str:
+        saved.append(m.group(0))
+        return f"\x00ORD{len(saved) - 1}\x00"
+
+    out = re.sub(r"\bORD-[A-Za-z0-9_-]+\b", _park_ord, text)
+    out = _EMAIL_RE.sub("[REDACTED_EMAIL]", out)
     out = _PHONE_RE.sub("[REDACTED_PHONE]", out)
     out = _SSN_RE.sub("[REDACTED_SSN]", out)
+    for i, val in enumerate(saved):
+        out = out.replace(f"\x00ORD{i}\x00", val)
     return out
 
 
