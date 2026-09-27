@@ -21,7 +21,7 @@ done
 export DATABASE_URL="${DATABASE_URL:-postgresql+psycopg://enterpriseflow:ef_test_only@127.0.0.1:5433/enterpriseflow_test}"
 export EF_DB_TESTS=1
 export EF_JWT_SECRET="${EF_JWT_SECRET:-test-jwt-secret-not-for-prod-32c}"
-export REDIS_URL="${REDIS_URL:-redis://127.0.0.1:6379/15}"
+export REDIS_URL="${REDIS_URL:-redis://127.0.0.1:6380/0}"
 # refuse accidental prod overrides
 case "$DATABASE_URL" in
   *enterpriseflow_test*) ;;
